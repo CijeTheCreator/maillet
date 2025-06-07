@@ -20,8 +20,9 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { motion, AnimatePresence } from "framer-motion"
-import { activityDataM, allTokens, walletDataM } from "@/lib/mocks"
+import { allTokens, } from "@/lib/mocks"
 import { useUser } from "@clerk/nextjs"
+import { miniAddress } from "@/lib/helpers"
 
 export default function WalletPage() {
   const [isLoading, setIsLoading] = useState(true)
@@ -96,26 +97,125 @@ export default function WalletPage() {
     return () => clearTimeout(searchTimer)
   }, [searchQuery])
 
+  // Updated useEffect hook for fetching real data
   useEffect(() => {
+    if (!isLoaded) return
+    const fetchWalletData = async () => {
+      try {
+        setIsLoading(true);
 
-    //TODO: FETCH BALANCE
-    // Simulate loading data
-    const timer = setTimeout(() => {
-      setWalletData(walletDataM)
-      setIsLoading(false)
-    }, 2000)
+        const userEmail = user?.emailAddresses[0].emailAddress || ""
 
-    // Simulate loading activity data with a slight delay
+        if (userEmail == "") {
+          throw new Error(`Email not initialized yet`);
+        }
+
+        const response = await fetch('/api/wallet/balance', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: userEmail,
+            tokenAddress: 'native'
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const balanceData = await response.json();
+
+        // Transform the response to match your walletData interface
+        const transformedWalletData = {
+          accountName: balanceData.email, // or derive from email
+          accountAddress: balanceData.publicKey,
+          balance: balanceData.balance,
+          tokens: [
+            { name: "Ethereum", value: `$${(balanceData.priceUsd * balanceData.balance).toFixed(2)}`, amount: balanceData.balance, icon: "ethereum", percentage: "+4.70%" }
+          ], // You might want to fetch token balances separately
+          priceUsd: balanceData.priceUsd,
+          balanceUsd: balanceData.balanceUsd,
+          symbol: balanceData.symbol
+        };
+
+        setWalletData(transformedWalletData);
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error fetching wallet data:', error);
+        setIsLoading(false);
+      }
+    };
+
+    const fetchActivityData = async () => {
+      try {
+        setIsActivityLoading(true);
+
+        const userEmail = user?.emailAddresses[0].emailAddress || ""
+
+        if (userEmail == "") {
+          throw new Error(`Email not initialized yet`);
+        }
+        const response = await fetch('/api/wallet/history', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: userEmail,
+            limit: 20,
+            offset: 0
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const transactionData = await response.json();
+
+        const transformedActivityData = transactionData.transactions.map((tx: any) => {
+          const isReceived = tx.to?.toLowerCase() === transactionData.publicKey.toLowerCase();
+
+          return {
+            type: isReceived ? 'Received' : 'Sent',
+            token: 'ETH', // or derive from transaction data
+            amount: tx.value,
+            value: (parseFloat(tx.value) * transactionData.currentEthPrice).toFixed(2),
+            ...(isReceived ? { from: tx.from } : { to: tx.to }),
+            date: new Date(tx.timestamp * 1000).toLocaleDateString(),
+            time: new Date(tx.timestamp * 1000).toLocaleTimeString(),
+            status: 'Completed',
+            hash: tx.hash,
+            blockNumber: tx.blockNumber
+          };
+
+
+        });
+        console.log(transformedActivityData)
+
+        setActivityData(transformedActivityData);
+        setIsActivityLoading(false);
+      } catch (error) {
+        console.error('Error fetching activity data:', error);
+        setIsActivityLoading(false);
+        // Handle error state
+      }
+    };
+
+    // Fetch both wallet and activity data
+    fetchWalletData();
+
+    // Add a slight delay for activity data to stagger the requests
     const activityTimer = setTimeout(() => {
-      setActivityData(activityDataM)
-      setIsActivityLoading(false)
-    }, 2500)
+      fetchActivityData();
+    }, 500);
 
     return () => {
-      clearTimeout(timer)
-      clearTimeout(activityTimer)
-    }
-  }, [])
+      clearTimeout(activityTimer);
+    };
+  }, [isLoaded]);
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -132,17 +232,50 @@ export default function WalletPage() {
   }
 
 
-  //TODO: SEND TRANSACTION
-  const handleSendConfirm = () => {
+  ////TODO: SEND TRANSACTION
+  //const handleSendConfirm = () => {
+  //  setConfirmationModalOpen(false)
+  //  setTransactionModalOpen(true)
+  //  setIsMining(true)
+  //
+  //  // Simulate transaction mining
+  //  setTimeout(() => {
+  //    setIsMining(false)
+  //    setTransactionHash("0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b")
+  //  }, 3000)
+  //}
+
+
+  const handleSendConfirm = async () => {
     setConfirmationModalOpen(false)
     setTransactionModalOpen(true)
     setIsMining(true)
 
-    // Simulate transaction mining
-    setTimeout(() => {
+    try {
+      const response = await fetch('/api/wallet/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          fromEmail: user?.emailAddresses[0].emailAddress || "", toEmailOrAddress: emailOrAddress,
+          amount: amount,
+          tokenAddress: 'native' // or you can expose this as a state if you support tokens
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Transaction failed')
+      }
+
+      setTransactionHash(data.transactionHash)
+    } catch (error) {
+      console.error('Send transaction error:', error)
+    } finally {
       setIsMining(false)
-      setTransactionHash("0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b")
-    }, 3000)
+    }
   }
 
   const handleReceiveModalOpen = () => {
@@ -189,28 +322,12 @@ export default function WalletPage() {
       {/* Header with logo */}
       <div className="w-full flex justify-center py-6">
         <div className="font-bold text-2xl">
-          <span>Meta</span>
-          <span>Mask</span>
+          <span>Maillet</span>
         </div>
       </div>
 
       {/* Main wallet container */}
       <div className="w-full max-w-md mx-auto shadow-lg rounded-lg overflow-hidden">
-        {/* Network selector */}
-        <div className="p-4 bg-white border-b">
-          <div className="flex items-center">
-            <div className="flex items-center gap-2 bg-gray-100 rounded-full px-3 py-1.5">
-              <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs">
-                E
-              </div>
-              <span className="text-sm font-medium">Ethereum Mainnet</span>
-              <ChevronDown className="w-4 h-4" />
-            </div>
-            <div className="ml-auto">
-              <MoreVertical className="w-5 h-5" />
-            </div>
-          </div>
-        </div>
 
         {/* Account info */}
         <div className="p-4 bg-white border-b">
@@ -220,9 +337,7 @@ export default function WalletPage() {
                 <Skeleton className="h-6 w-24" />
               ) : (
                 <>
-                  <div className="w-5 h-5 rounded-full bg-red-500"></div>
                   <span className="font-medium">{walletData.accountName}</span>
-                  <ChevronDown className="w-4 h-4" />
                 </>
               )}
             </div>
@@ -230,8 +345,8 @@ export default function WalletPage() {
               <Skeleton className="h-4 w-32" />
             ) : (
               <div className="flex items-center gap-1 text-sm text-gray-600">
-                <span>{walletData.accountAddress}</span>
-                <Copy className="w-4 h-4" />
+                <span>{miniAddress(walletData.accountAddress)}</span>
+                <Copy className="w-4 h-4 cursor-pointer" />
               </div>
             )}
           </div>
@@ -243,10 +358,7 @@ export default function WalletPage() {
             <Skeleton className="h-10 w-40 mb-6" />
           ) : (
             <div className="text-4xl font-bold mb-6 flex items-center gap-2">
-              {walletData.balance}
-              <div className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center">
-                <div className="w-2 h-2 rounded-full bg-gray-400"></div>
-              </div>
+              {`${walletData.tokens[0].value}`}
             </div>
           )}
 
@@ -336,7 +448,9 @@ export default function WalletPage() {
                   <div key={index} className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                        <div className="w-5 h-5 text-blue-600">Ξ</div>
+                        <div className="w-5 h-5 text-blue-600">
+                          <img src="/ethereum.svg" alt="eth-logo" />
+                        </div>
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
@@ -355,13 +469,6 @@ export default function WalletPage() {
               )}
             </div>
 
-            {/* Support link */}
-            <div className="p-4 flex items-center gap-2">
-              <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs">
-                ?
-              </div>
-              <span className="text-blue-600">MetaMask support</span>
-            </div>
           </TabsContent>
           <TabsContent value="activity">
             <div className="divide-y">

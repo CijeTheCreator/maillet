@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getTransactionHistory } from '@/lib/blockchain';
-import { getEthereumPrice } from '@/lib/coingecko';
+// import { getEthereumPrice } from '@/lib/coingecko';
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,9 +28,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch transaction history from blockchain
-    const [transactions, ethPrice] = await Promise.all([
+    // const [transactions, ethPrice] = await Promise.all([
+    //   getTransactionHistory(account.publicKey, limit + offset),
+    //   getEthereumPrice()
+    // ]);
+
+
+    // Fetch transaction history from blockchain
+    const [transactions] = await Promise.all([
       getTransactionHistory(account.publicKey, limit + offset),
-      getEthereumPrice()
     ]);
 
     // Apply pagination
@@ -40,7 +46,6 @@ export async function POST(request: NextRequest) {
       email,
       publicKey: account.publicKey,
       transactions: paginatedTransactions,
-      currentEthPrice: ethPrice,
       pagination: {
         limit,
         offset,

@@ -3,6 +3,7 @@ import './globals.css'
 import {
   ClerkProvider
 } from '@clerk/nextjs'
+import { Toaster } from 'sonner';
 
 export const metadata: Metadata = {
   title: 'Maillet',
@@ -17,7 +18,8 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en">
-        <body>{children}</body>
+        <body>{children}
+        </body>
       </html>
     </ClerkProvider>
   )

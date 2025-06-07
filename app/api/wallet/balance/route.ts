@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
     if (tokenAddress.toLowerCase() === 'native' || tokenAddress === '') {
       try {
         priceUsd = await getEthereumPrice();
+        console.log("DEBUG:  ", priceUsd)
         balanceUsd = parseFloat(balance) * priceUsd;
       } catch (error) {
         console.error('Failed to fetch ETH price:', error);
