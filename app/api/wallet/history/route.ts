@@ -6,6 +6,7 @@ import { getTransactionHistory } from '@/lib/blockchain';
 export async function POST(request: NextRequest) {
   try {
     const { email, limit = 20, offset = 0 } = await request.json();
+    console.log("1")
 
     if (!email) {
       return NextResponse.json(
@@ -14,11 +15,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log("2")
+
     // Get public key from database
     const account = await prisma.account.findUnique({
       where: { email },
       select: { publicKey: true }
     });
+
+    console.log("3")
 
     if (!account) {
       return NextResponse.json(
@@ -26,6 +31,8 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    console.log("4")
 
     // Fetch transaction history from blockchain
     // const [transactions, ethPrice] = await Promise.all([
@@ -35,12 +42,14 @@ export async function POST(request: NextRequest) {
 
 
     // Fetch transaction history from blockchain
-    const [transactions] = await Promise.all([
-      getTransactionHistory(account.publicKey, limit + offset),
-    ]);
+    const transactions = await getTransactionHistory(account.publicKey, limit + offset)
+
+    console.log("5")
 
     // Apply pagination
     const paginatedTransactions = transactions.slice(offset, offset + limit);
+
+    console.log("6")
 
     return NextResponse.json({
       email,

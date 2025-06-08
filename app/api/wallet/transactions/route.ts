@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Transaction fetch error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch transactions' },
+      { error: error.message },
       { status: 500 }
     );
   }

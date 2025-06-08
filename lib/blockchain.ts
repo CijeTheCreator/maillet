@@ -35,43 +35,42 @@ export async function getTokenBalance(
 }
 
 export async function getTransactionHistory(walletAddress: string, limit: number = 10) {
+  const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY;
+
+  const url = `https://api-sepolia.etherscan.io/api?module=account&action=txlist&address=${walletAddress}&startblock=0&endblock=99999999&page=1&offset=${limit}&sort=desc&apikey=${ETHERSCAN_API_KEY}`;
+
   try {
-    // Get latest block number
-    const latestBlock = await provider.getBlockNumber();
-    const transactions = [];
+    const response = await fetch(url);
+    const data = await response.json();
 
-    // Search through recent blocks for transactions involving this address
-    const blocksToSearch = Math.min(1000, latestBlock);
-
-    for (let i = 0; i < blocksToSearch && transactions.length < limit; i++) {
-      const blockNumber = latestBlock - i;
-      const block = await provider.getBlock(blockNumber, true);
-
-      if (block && block.transactions) {
-        for (const tx of block.transactions) {
-          if (typeof tx === 'object' && tx !== null) {
-            if (tx.to?.toLowerCase() === walletAddress.toLowerCase() ||
-              tx.from?.toLowerCase() === walletAddress.toLowerCase()) {
-              transactions.push({
-                hash: tx.hash,
-                from: tx.from,
-                to: tx.to,
-                value: ethers.formatEther(tx.value || '0'),
-                blockNumber: tx.blockNumber,
-                timestamp: block.timestamp,
-                gasPrice: tx.gasPrice?.toString(),
-                gasLimit: tx.gasLimit?.toString()
-              });
-
-              if (transactions.length >= limit) break;
-            }
-          }
-        }
-      }
+    if (data.status !== '1') {
+      throw new Error(`Etherscan API error: ${data.message}`);
     }
 
+    const transactions: {
+      hash: any;
+      from: any;
+      to: any;
+      value: string;
+      blockNumber: any;
+      timestamp: number;
+      gasPrice: any;
+      gasLimit: any;
+    }[] = data.result.map((tx: any) => ({
+      hash: tx.hash,
+      from: tx.from,
+      to: tx.to,
+      value: tx.value,
+      blockNumber: tx.blockNumber,
+      timestamp: parseInt(tx.timeStamp),
+      gasPrice: tx.gasPrice,
+      gasLimit: tx.gas
+    }));
+
     return transactions;
+
   } catch (error) {
-    throw new Error(`Failed to get transaction history: ${error}`);
+    console.error('Error fetching transaction history:', error);
+    throw error;
   }
 }
