@@ -18,9 +18,7 @@ export async function POST(req: NextRequest) {
 
       try {
         // Get the base URL for the internal API call
-        const baseUrl = process.env.NEXTAUTH_URL ||
-          process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` :
-          'http://localhost:3000'
+        const baseUrl = process.env.BASE_URL || 'http://localhost:3000'
 
         // Call the internal account creation API
         const response = await fetch(`${baseUrl}/api/account/create`, {
