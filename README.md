@@ -5,7 +5,7 @@ An EVM wallet designed to be operated completely through mail.
 ## Things you can do
 
 - Send/Receive funds to any email address  
-- Send/Receive funds to any email address
+- Send/Receive funds to any wallet address
 - Fetch your balance  
 - Fetch your transaction history 
 
