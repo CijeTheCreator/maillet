@@ -366,7 +366,7 @@ export default function WalletPage() {
   return (
     <>
       <SignedIn>
-        {walletData.accountAddress == "" ? <div>Loading</div> : (
+        {walletData.accountAddress == "" ? <LoadingScreen /> : (
 
 
           <div className="flex flex-col items-center min-h-screen bg-white">
