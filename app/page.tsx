@@ -22,6 +22,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { allTokens, } from "@/lib/mocks"
 import { RedirectToSignIn, SignedIn, SignedOut, useUser } from "@clerk/nextjs"
 import { formatEth, miniAddress } from "@/lib/helpers"
+import LoadingScreen from "@/components/ui/loading"
 
 export default function WalletPage() {
   const [isLoading, setIsLoading] = useState(true)
@@ -359,7 +360,7 @@ export default function WalletPage() {
 
 
   if (!isLoaded) {
-    return <div>Loading...</div>;
+    return <LoadingScreen />
   }
 
   return (
