@@ -1,0 +1,6 @@
+venv
+.env
+*.bak
+submission_post.md
+archives
+__pycache__
